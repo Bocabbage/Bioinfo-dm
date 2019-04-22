@@ -13,10 +13,10 @@
 
 ## 3.Algorithms
 
-* [x]K-Means
-* [x]DBSCAN
-* [x]Hierarchical clustering
-* [ ]Spectral clustering
+* [x] K-Means
+* [x] DBSCAN
+* [x] Hierarchical clustering
+* [ ] Spectral clustering
 
 Meet problem that 'SpectralClustering' take about 99% of my RAM(12GB), also spends a long time to run but 
 meet 'out of memory'. I just take 100 samples of the data and run them.
