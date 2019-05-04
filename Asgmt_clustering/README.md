@@ -26,7 +26,7 @@
 * [ ] Spectral clustering
 
 Meet problem that 'SpectralClustering' take about 99% of my RAM(12GB), also spending a long time to run but 
-meeting 'out of memory'. I just take 100 samples of the data and run them.
+meets 'out of memory'. I just take 100 samples of the data and run them.
 
 ## 5.Results
 
