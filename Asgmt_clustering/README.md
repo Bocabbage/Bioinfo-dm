@@ -11,19 +11,32 @@
 * Data: [GSE33532](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE33532)
         (25906 genes, 100 samples)
 
-## 3.Algorithms
+## 3.Preprocessing
+
+* Standard-Scaler
+* Principal Component Analysis(PCA).[para: n_components=0.9]
+
+
+## 4.Algorithms
 
 * [x] K-Means
 * [x] DBSCAN
 * [x] Hierarchical clustering
+* [x] Gaussian Mixture
 * [ ] Spectral clustering
 
 Meet problem that 'SpectralClustering' take about 99% of my RAM(12GB), also spends a long time to run but 
 meet 'out of memory'. I just take 100 samples of the data and run them.
 
-![image](figs/4_clustering_04-22.png)
+## 5.Results
 
-And here is the time-cost performance of different algorithms:
+Poor performance util 2019-05-04:
 
-![image](figs/performance.png)
+* Score Values v.s. feature-dimensions after PCA:
 
+
+![image](figs/Dim_vs_Scores.jpeg)
+
+* Visualization
+
+![image](figs/n=70_visualization.png)
