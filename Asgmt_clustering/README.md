@@ -5,11 +5,18 @@
 * Apply different cluster methods for micro-array Data, including clustering the samples/genes.
 * Compare the result of different methods
 
-## 2.Data-Source
+## 2.Data-Source & Instruments
 
+### DataSource
 * Database: [GEO](https://www.ncbi.nlm.nih.gov/geo/)
 * Data: [GSE33532](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE33532)
-        (25906 genes, 100 samples)
+        (25906 probes, 100 samples)
+
+### Instruments
+* sklearn(python-package)
+* matplotlib(python-package)
+* Bioconductor(R-packages)
+
 
 ## 3.Preprocessing
 
@@ -18,7 +25,7 @@
 The raw-data need 2 steps of preproccessing.
 
 ##### Prob to ID/Gene Name
-The raw data of chips is a matrix of probes\*samples, but the data we actually analyze is gene\*samples.
+The raw data of the chip is a matrix of [probes\*samples], but what we actually analyze is [genes\*samples].
 So we need to transform the probe-ids to gene-names. I use 'Bioconductor' package to download the GPL file for finishing this.
 Also, It's important to add tags for each samples considering our clustering targets.I have try 2 kinds of tags:
 Use Tumor-stage tags & Histology tags.
@@ -26,6 +33,7 @@ Use Tumor-stage tags & Histology tags.
 #### Ignore unannotated data and Deduplication
 After transformation, you may find some probes without annotation and we need to delete them.
 Also,It's a feature of micro-array data that one gene might be detected by more than one probe. So we need to deduplication.
+I use python to do this.
 
 ### Standardized and Decomposition
 * Standard-Scaler
