@@ -2,7 +2,7 @@
 
 ## 1.Target
 
-* Apply different cluster methods for micro-array Data
+* Apply different cluster methods for micro-array Data, including clustering the samples/genes.
 * Compare the result of different methods
 
 ## 2.Data-Source
@@ -13,6 +13,21 @@
 
 ## 3.Preprocessing
 
+### Data Clean
+
+The raw-data need 2 steps of preproccessing.
+
+##### Prob to ID/Gene Name
+The raw data of chips is a matrix of probes\*samples, but the data we actually analyze is gene\*samples.
+So we need to transform the probe-ids to gene-names. I use 'Bioconductor' package to download the GPL file for finishing this.
+Also, It's important to add tags for each samples considering our clustering targets.I have try 2 kinds of tags:
+Use Tumor-stage tags & Histology tags.
+
+#### Ignore unannotated data and Deduplication
+After transformation, you may find some probes without annotation and we need to delete them.
+Also,It's a feature of micro-array data that one gene might be detected by more than one probe. So we need to deduplication.
+
+### Standardized and Decomposition
 * Standard-Scaler
 * Principal Component Analysis(PCA).[para: n_components=0.9]
 
@@ -23,20 +38,10 @@
 * [x] DBSCAN
 * [x] Hierarchical clustering
 * [x] Gaussian Mixture
-* [ ] Spectral clustering
 
 Meet problem that 'SpectralClustering' take about 99% of my RAM(12GB), also spending a long time to run but 
 meets 'out of memory'. I just take 100 samples of the data and run them.
 
 ## 5.Results
 
-Poor performance util 2019-05-04:
 
-* Score Values v.s. feature-dimensions after PCA:
-
-
-![image](figs/Dim_vs_Scores.jpeg)
-
-* Visualization
-
-![image](figs/n=70_visualization.png)

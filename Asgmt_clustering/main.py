@@ -1,15 +1,12 @@
-# 更新时间：2019/4/21(未完成)
-#          2019/4/22(增加层次聚类；谱聚类小样本test；未完成)
-#          2019/5/4(增加性能评估；未完成)
-
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 #from mpl_toolkits.mplot3d import Axes3D # essential
 
 # Preprocessing
 from sklearn.preprocessing import StandardScaler
-#from sklearn.preprocessing import MinMsubfigScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 
 # Clustering Module
@@ -17,32 +14,47 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.mixture import GaussianMixture
-#from sklearn.cluster import SpectralClustering
 from sklearn import metrics
 
 # Hyper Parameters
-PCA_COMPONENTS_LIST = range(2,100)
-#PCA_COMPONENTS = 0.9
+PCA_COMPONENTS = 0.9
 N_CLUSTERS = 5
-DBSCAN_EPS = 1
-DBSCAN_MINS = 5
+DBSCAN_EPS = 0.1
+DBSCAN_MINS = 1
+AGG_LINKAGE = "ward"
+AGG_AFFINITY = "euclidean"
 
 # Set random seed
 random_state = 170
 
-# Load data
-filename = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\GSE33532.csv'
-with open(filename,newline='') as csvfile:
-    rawdata = list(csv.reader(csvfile))
-    probs_List = rawdata[0][1:]
-    Gene_List = [x[0] for x in rawdata[1:]]
-    # Will get a data matrix whose shape is (100,25906) and 5-classes labels
-    Array = np.array([x[1:] for x in rawdata[2:]]).reshape(len(rawdata[0])-1,len(rawdata)-2)
-    Labels = rawdata[1][1:]
+# clustering dict
+his = {"adeno":0,"squamous":1,"mixed":2,"normal lung":3}
 
+# Load data
+filename = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\hGSE33532.csv'
+with open(filename,newline='') as csvfile:
+    raw_data = list(csv.reader(csvfile))
+    sample_List = raw_data[0][1:-1]      # Sample-codes
+    Labels = raw_data[1][1:-1]           # tumor-stage-labels
+    # remove the unannotated data
+    clean_data = list(filter(lambda line:line[-1]!='' and line[-1][0].isalpha(),raw_data[2:]))
+    clean_data = [x[1:] for x in clean_data]
+    clean_data_frame = pd.DataFrame(clean_data)
+    clean_data_frame.columns = raw_data[0][1:]
+    clean_data_frame = clean_data_frame.drop_duplicates(['Gene Symbol'])
+    clean_data = np.array(clean_data_frame).tolist()
+    #clean_data_frame.to_csv("./test.csv",sep=',')
+    Array = np.array([x[:-1] for x in clean_data])
+    # We can finally get a data-matrix whose dimension is (14533*100)
+    print(np.array(Array).shape)
+
+
+    
 
 # Min-Msubfig scaling
+#Array = MinMaxScaler().fit_transform(Array)
 Array = StandardScaler().fit_transform(Array)
+Array = Array.T
 
 score_funcs = [
     metrics.adjusted_rand_score,
@@ -52,142 +64,92 @@ score_funcs = [
 ]
 
 
-# Scores_Score lists
-Scores_Kmeans = np.zeros([len(PCA_COMPONENTS_LIST),len(score_funcs)])
-Scores_DBSCAN = np.zeros([len(PCA_COMPONENTS_LIST),len(score_funcs)])
-Scores_Aggloom = np.zeros([len(PCA_COMPONENTS_LIST),len(score_funcs)])
-Scores_Gmm = np.zeros([len(PCA_COMPONENTS_LIST),len(score_funcs)])
+# PCA
+pca = PCA(n_components=PCA_COMPONENTS,svd_solver='full')
+Array_pca = pca.fit_transform(Array)
+dedimension = Array_pca.shape[1]
+print('shape after PCA:',dedimension)
 
-i=0
-j=0
+#K-Mean:
+Kmeans_pre = KMeans(n_clusters=N_CLUSTERS,random_state=random_state).fit_predict(Array_pca)
 
-for PCA_COMPONENTS in PCA_COMPONENTS_LIST:
-    j=0
-    # Use PCA
-    pca = PCA(n_components=PCA_COMPONENTS,svd_solver='full')
-    Array_pca = pca.fit_transform(Array)
-    #print(Array_pca.shape)
+# DBSCAN:
+DBSCAN_pre = DBSCAN(eps=DBSCAN_EPS,min_samples=DBSCAN_MINS).fit_predict(Array_pca)
+#DBSCAN_pre = DBSCAN().fit_predict(Array_pca)
 
-    # K-Mean:
-    Kmeans_pre = KMeans(n_clusters=N_CLUSTERS,random_state=random_state).fit_predict(Array_pca)
+# Hierarchical clustering
+Agglom_pre = AgglomerativeClustering(n_clusters=N_CLUSTERS,
+                                     affinity=AGG_AFFINITY,
+                                     linkage=AGG_LINKAGE).fit_predict(Array_pca)
+# Gaussian Mixture
+Gmm_pre = GaussianMixture(n_components=N_CLUSTERS,random_state=random_state).fit_predict(Array_pca)
 
-    # DBSCAN:
-    DBSCAN_pre = DBSCAN(eps=DBSCAN_EPS,min_samples=DBSCAN_MINS).fit_predict(Array_pca) 
+#### Score for clustering for Samples ####
 
-    # Hierarchical clustering
-    Agglom_pre = AgglomerativeClustering(n_clusters=N_CLUSTERS,
-                                         affinity="euclidean",
-                                         linkage="ward").fit_predict(Array_pca)
-    # Gaussian Mixture
-    Gmm_pre = GaussianMixture(n_components=N_CLUSTERS).fit_predict(Array_pca)
+for score_func in score_funcs:
+    print(score_func.__name__,'KMeans:',score_func(Kmeans_pre,Labels))
+    print(score_func.__name__,'DBSCAN:',score_func(DBSCAN_pre,Labels))
+    print(score_func.__name__,'Agglom:',score_func(Agglom_pre,Labels))
+    print(score_func.__name__,'GMM:',score_func(Gmm_pre,Labels))
 
-    for score_func in score_funcs:
-        Scores_Kmeans[i,j] = score_func(Kmeans_pre,Labels)
-        Scores_DBSCAN[i,j] = score_func(DBSCAN_pre,Labels)
-        Scores_Aggloom[i,j] = score_func(Agglom_pre,Labels)
-        Scores_Gmm[i,j] = score_func(Gmm_pre,Labels)
-        j+=1
-    i+=1
+##########################################
 
-fig_score = plt.figure(1)
-subfig = fig_score.add_subplot(2,2,1)
-for i in range(0,len(score_funcs)):
-    subfig.plot(PCA_COMPONENTS_LIST,Scores_Kmeans[:,i],label=score_funcs[i].__name__)
-subfig.set_title("KMeans Scores-score")
-subfig.legend()
+fig = plt.figure(1)
 
+# KMeans result
+subfig = fig.add_subplot(2,2,1)
+subfig.scatter(Array_pca[:,0],Array_pca[:,1],c=Kmeans_pre)
+subfig.set_title("KMeans: n_comp = %d"% N_CLUSTERS)
+# subfig = fig.add_subplot(2,2,1,projection='3d')
+# subfig.scatter(Array_pca[:,0], Array_pca[:,1],Array_pca[:,2],c=Kmeans_pre)
+# subfig.set_title("KMeans: n_comp = %d"% N_CLUSTERS)
 
-subfig = fig_score.add_subplot(2,2,2)
-for i in range(0,len(score_funcs)):
-    subfig.plot(PCA_COMPONENTS_LIST,Scores_DBSCAN[:,i],label=score_funcs[i].__name__)
-subfig.set_title("DBSCAN Scores-score")
-subfig.legend()
+# DBSCAN result
+subfig = fig.add_subplot(2,2,2)
+subfig.scatter(Array_pca[:,0], Array_pca[:,1],c=DBSCAN_pre)
+subfig.set_title("DBSCAN: eps= %d,min_samples= %d,n_comp = %d"% 
+             (DBSCAN_EPS,DBSCAN_MINS,len(set(DBSCAN_pre))))
+# subfig = fig.add_subplot(2,2,2,projection='3d')
+# subfig.scatter(Array_pca[:,0], Array_pca[:,1],Array_pca[:,2],c=DBSCAN_pre)
+# subfig.set_title("DBSCAN: eps= %d,min_samples= %d,n_comp = %d"% 
+#              (DBSCAN_EPS,DBSCAN_MINS,len(set(DBSCAN_pre))))
 
+# Hierarchical result
+subfig = fig.add_subplot(2,2,3)
+subfig.scatter(Array_pca[:,0], Array_pca[:,1],c=Agglom_pre)
+subfig.set_title("Ward Linkage: n_comp = %d"% N_CLUSTERS)
+# subfig = fig.add_subplot(2,2,3,projection='3d')
+# subfig.scatter(Array_pca[:,0], Array_pca[:,1],Array_pca[:,2],c=Agglom_pre)
+# subfig.set_title("Ward Linkage: n_comp = %d"% N_CLUSTERS)
 
-subfig = fig_score.add_subplot(2,2,3)
-for i in range(0,len(score_funcs)):
-    subfig.plot(PCA_COMPONENTS_LIST,Scores_Aggloom[:,i],label=score_funcs[i].__name__)
-subfig.set_title("Aggloom Scores-score")
-subfig.legend()
-
-
-subfig = fig_score.add_subplot(2,2,4)
-for i in range(0,len(score_funcs)):
-    subfig.plot(PCA_COMPONENTS_LIST,Scores_Gmm[:,i],label=score_funcs[i].__name__)
-subfig.set_title("Gmm Scores-score")
-subfig.legend()
-
+# Gaussian Mixture result
+subfig = fig.add_subplot(2,2,4)
+subfig.scatter(Array_pca[:,0], Array_pca[:,1],c=Gmm_pre)
+subfig.set_title("Gaussian Mixture: n_comp = %d"% N_CLUSTERS)
 
 plt.show()
 
+#### Clustering for Genes : Visualization ####
+# fig = plt.figure(2)
 
-# Spectral_clustering:
-# SpecClus_pre = SpectralClustering(
-#                 n_clusters=N_CLUSTERS,
-#                 assign_labels='discretize',
-#                 random_state=random_state).fit_predict(Array_pca[0:100,:])
+# subfig1=fig.add_subplot(3,3,1)
+# subfig2=fig.add_subplot(3,3,2)
+# subfig3=fig.add_subplot(3,3,3)
+# subfig4=fig.add_subplot(3,3,4)
+# subfig5=fig.add_subplot(3,3,5)
+# subfig6=fig.add_subplot(3,3,6)
+# subfig7=fig.add_subplot(3,3,7)
+# subfig8=fig.add_subplot(3,3,8)
+# subfig9=fig.add_subplot(3,3,9)
 
 
+# subfigs = [subfig1,subfig2,subfig3,subfig4,
+#            subfig5,subfig6,subfig7,subfig8,subfig9]
 
-# PCA
-# pca = PCA(n_components=PCA_COMPONENTS,svd_solver='full')
-# Array_pca = pca.fit_transform(Array)
-# print(Array_pca.shape)
-
-# #K-Mean:
-# Kmeans_pre = KMeans(n_clusters=N_CLUSTERS,random_state=random_state).fit_predict(Array_pca)
-
-# # DBSCAN:
-# DBSCAN_pre = DBSCAN(eps=DBSCAN_EPS,min_samples=DBSCAN_MINS).fit_predict(Array_pca) 
-
-# # Hierarchical clustering
-# Agglom_pre = AgglomerativeClustering(n_clusters=N_CLUSTERS,
-#                                      affinity="euclidean",
-#                                      linkage="ward").fit_predict(Array_pca)
-# # Gaussian Mixture
-# Gmm_pre = GaussianMixture(n_components=N_CLUSTERS).fit_predict(Array_pca)
-
-# print(metrics.adjusted_rand_score(Kmeans_pre,Labels))
-# print(metrics.adjusted_rand_score(DBSCAN_pre,Labels))
-# print(metrics.adjusted_rand_score(Agglom_pre,Labels))
-# print(metrics.adjusted_rand_score(Gmm_pre,Labels))
-
-# fig = plt.figure()
-
-# # KMeans result
-# subfig = fig.add_subplot(2,2,1)
-# subfig.scatter(Array_pca[:,0],Array_pca[:,1],c=Kmeans_pre)
-# subfig.set_title("KMeans: n_comp = %d"% N_CLUSTERS)
-# # subfig = fig.add_subplot(2,2,1,projection='3d')
-# # subfig.scatter(Array_pca[:,0], Array_pca[:,1],Array_pca[:,2],c=Kmeans_pre)
-# # subfig.set_title("KMeans: n_comp = %d"% N_CLUSTERS)
-
-# # DBSCAN result
-# subfig = fig.add_subplot(2,2,2)
-# subfig.scatter(Array_pca[:,0], Array_pca[:,1],c=DBSCAN_pre)
-# subfig.set_title("DBSCAN: eps= %d,min_samples= %d,n_comp = %d"% 
-#              (DBSCAN_EPS,DBSCAN_MINS,len(set(DBSCAN_pre))))
-# # subfig = fig.add_subplot(2,2,2,projection='3d')
-# # subfig.scatter(Array_pca[:,0], Array_pca[:,1],Array_pca[:,2],c=DBSCAN_pre)
-# # subfig.set_title("DBSCAN: eps= %d,min_samples= %d,n_comp = %d"% 
-# #              (DBSCAN_EPS,DBSCAN_MINS,len(set(DBSCAN_pre))))
-
-# # Hierarchical result
-# subfig = fig.add_subplot(2,2,3)
-# subfig.scatter(Array_pca[:,0], Array_pca[:,1],c=Agglom_pre)
-# subfig.set_title("Ward Linkage: n_comp = %d"% N_CLUSTERS)
-# # subfig = fig.add_subplot(2,2,3,projection='3d')
-# # subfig.scatter(Array_pca[:,0], Array_pca[:,1],Array_pca[:,2],c=Agglom_pre)
-# # subfig.set_title("Ward Linkage: n_comp = %d"% N_CLUSTERS)
-
-# # Gaussian Mixture result
-# subfig = fig.add_subplot(2,2,4)
-# subfig.scatter(Array_pca[:,0], Array_pca[:,1],c=Gmm_pre)
-# subfig.set_title("Gaussian Mixture: n_comp = %d"% N_CLUSTERS)
-
-# # Spectral-Clustering result
-# # subfig = fig.add_subplot(2,2,4,projection='3d')
-# # subfig.scatter(Array_pca[0:100,0], Array_pca[0:100,1],Array_pca[0:100,2],c=SpecClus_pre)
-# # subfig.set_title("Spectral-Clustering: n_comp=%d(n_samples=100)"% N_CLUSTERS)
+# i = 0
+# for label in Agglom_pre[:100]:
+#     subfigs[label].plot(range(0,100),Array[i])
+#     i+=1
 
 # plt.show()
+##############################################
