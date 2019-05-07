@@ -63,5 +63,5 @@ group_list = as.character(pdata[, 39])
     exprdata$ID <- NULL
 }
 
-
+# write.csv(x=exprdata,file='./GSE33532/GSE33532.csv')
 write.csv(x=exprdata,file='./GSE33532/hGSE33532.csv')

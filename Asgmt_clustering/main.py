@@ -6,7 +6,7 @@ import pandas as pd
 
 # Preprocessing
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import Normalizer
 from sklearn.decomposition import PCA
 
 # Clustering Module
@@ -14,47 +14,74 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.mixture import GaussianMixture
+from sklearn.cluster import SpectralClustering
 from sklearn import metrics
+from scipy.stats import pearsonr
+
+def pearson_affinity(M):
+    result =  1 - np.array([[pearsonr(a,b)[0] for a in M] for b in M])
+    print(result.shape)
+    return result
 
 # Hyper Parameters
+IS_SAMPLE_CLUSTER = False
+
 PCA_COMPONENTS = 0.9
-N_CLUSTERS = 5
-DBSCAN_EPS = 0.1
+N_CLUSTERS = 2
+DBSCAN_EPS = 1
 DBSCAN_MINS = 1
-AGG_LINKAGE = "ward"
-AGG_AFFINITY = "euclidean"
+AGG_LINKAGE = "average"#"ward"
+AGG_AFFINITY = pearson_affinity#"euclidean"
+LOG_TRANSFORM = False
+DATA_FILE = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\hGSE33532.csv'
+SIGNIF_GENES = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\SignificantGenes.csv'
 
 # Set random seed
-random_state = 170
+random_state = 500
 
 # clustering dict
-his = {"adeno":0,"squamous":1,"mixed":2,"normal lung":3}
+his = {"adeno":1,"squamous":1,"mixed":1,"normal lung":0}
 
 # Load data
-filename = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\hGSE33532.csv'
+filename = DATA_FILE
 with open(filename,newline='') as csvfile:
     raw_data = list(csv.reader(csvfile))
-    sample_List = raw_data[0][1:-1]      # Sample-codes
+    #sample_List = raw_data[0][1:-1]      # Sample-codes
     Labels = raw_data[1][1:-1]           # tumor-stage-labels
+    Labels = [his[x] for x in Labels]
     # remove the unannotated data
-    clean_data = list(filter(lambda line:line[-1]!='' and line[-1][0].isalpha(),raw_data[2:]))
+    clean_data = list(filter(lambda line:line[-1]!='',raw_data[2:]))
     clean_data = [x[1:] for x in clean_data]
     clean_data_frame = pd.DataFrame(clean_data)
     clean_data_frame.columns = raw_data[0][1:]
     clean_data_frame = clean_data_frame.drop_duplicates(['Gene Symbol'])
     clean_data = np.array(clean_data_frame).tolist()
-    #clean_data_frame.to_csv("./test.csv",sep=',')
-    Array = np.array([x[:-1] for x in clean_data])
-    # We can finally get a data-matrix whose dimension is (14533*100)
+    if not IS_SAMPLE_CLUSTER:
+        Gene_list = [x[-1] for x in clean_data]
+    Array = np.array([x[:-1] for x in clean_data],dtype='f')    # be careful to the dtype!
     print(np.array(Array).shape)
+    csvfile.close()
+    # We can finally get a data-matrix whose dimension is (14533*100)
 
-
-    
+# Load Significant-Genes labels from analysis of GEO2R
+if not IS_SAMPLE_CLUSTER:
+    filename = SIGNIF_GENES
+    with open(filename,newline='') as csvfile:
+        temp = list(csv.reader(csvfile))
+        Signif_genes = [x[1] for x in temp[1:]]
+        #print(Signif_genes[:10],len(Signif_genes))
+        #print(Gene_list[:10],len(Gene_list))
+        csvfile.close()
 
 # Min-Msubfig scaling
-#Array = MinMaxScaler().fit_transform(Array)
-Array = StandardScaler().fit_transform(Array)
-Array = Array.T
+if LOG_TRANSFORM:
+    from sklearn.preprocessing import FunctionTransformer
+    Array = FunctionTransformer(np.log).fit_transform(Array)
+Array = Normalizer().fit_transform(Array)
+#Array = StandardScaler().fit_transform(Array)
+if IS_SAMPLE_CLUSTER:
+    Array = Array.T
+
 
 score_funcs = [
     metrics.adjusted_rand_score,
@@ -67,7 +94,7 @@ score_funcs = [
 # PCA
 pca = PCA(n_components=PCA_COMPONENTS,svd_solver='full')
 Array_pca = pca.fit_transform(Array)
-dedimension = Array_pca.shape[1]
+dedimension = Array_pca.shape
 print('shape after PCA:',dedimension)
 
 #K-Mean:
@@ -84,14 +111,28 @@ Agglom_pre = AgglomerativeClustering(n_clusters=N_CLUSTERS,
 # Gaussian Mixture
 Gmm_pre = GaussianMixture(n_components=N_CLUSTERS,random_state=random_state).fit_predict(Array_pca)
 
+# Spectral Clustering
+#Spect_pre = SpectralClustering(n_clusters=N_CLUSTERS).fit_predict(Array_pca)
+
 #### Score for clustering for Samples ####
-
-for score_func in score_funcs:
-    print(score_func.__name__,'KMeans:',score_func(Kmeans_pre,Labels))
-    print(score_func.__name__,'DBSCAN:',score_func(DBSCAN_pre,Labels))
-    print(score_func.__name__,'Agglom:',score_func(Agglom_pre,Labels))
-    print(score_func.__name__,'GMM:',score_func(Gmm_pre,Labels))
-
+if IS_SAMPLE_CLUSTER:
+    for score_func in score_funcs:
+        print(score_func.__name__,'KMeans:',score_func(Kmeans_pre,Labels))
+        print(score_func.__name__,'DBSCAN:',score_func(DBSCAN_pre,Labels))
+        print(score_func.__name__,'Agglom:',score_func(Agglom_pre,Labels))
+        print(score_func.__name__,'GMM:',score_func(Gmm_pre,Labels))
+#       print(score_func.__name__,'Spectral:',score_func(Spect_pre,Labels))
+else:
+    SIGNIF_Labels = [0]*Array.shape[0]
+    for i in range(Array.shape[0]):
+        if Gene_list[i] in Signif_genes:
+            SIGNIF_Labels[i] = 1
+    print("Signif counts:",SIGNIF_Labels.count(1))
+    for score_func in score_funcs:
+        print(score_func.__name__,'KMeans:',score_func(Kmeans_pre,SIGNIF_Labels))
+        print(score_func.__name__,'DBSCAN:',score_func(DBSCAN_pre,SIGNIF_Labels))
+        print(score_func.__name__,'Agglom:',score_func(Agglom_pre,SIGNIF_Labels))
+        print(score_func.__name__,'GMM:',score_func(Gmm_pre,SIGNIF_Labels))
 ##########################################
 
 fig = plt.figure(1)
@@ -130,26 +171,18 @@ subfig.set_title("Gaussian Mixture: n_comp = %d"% N_CLUSTERS)
 plt.show()
 
 #### Clustering for Genes : Visualization ####
-# fig = plt.figure(2)
+if not IS_SAMPLE_CLUSTER:
+    fig = plt.figure(2)
 
-# subfig1=fig.add_subplot(3,3,1)
-# subfig2=fig.add_subplot(3,3,2)
-# subfig3=fig.add_subplot(3,3,3)
-# subfig4=fig.add_subplot(3,3,4)
-# subfig5=fig.add_subplot(3,3,5)
-# subfig6=fig.add_subplot(3,3,6)
-# subfig7=fig.add_subplot(3,3,7)
-# subfig8=fig.add_subplot(3,3,8)
-# subfig9=fig.add_subplot(3,3,9)
+    subfig1=fig.add_subplot(1,2,1)
+    subfig2=fig.add_subplot(1,2,2)
 
+    subfigs = [subfig1,subfig2]
 
-# subfigs = [subfig1,subfig2,subfig3,subfig4,
-#            subfig5,subfig6,subfig7,subfig8,subfig9]
+    i = 0
+    for label in Agglom_pre[:50]:
+        subfigs[label].plot(range(30),Array[i][-30:])
+        i+=1
 
-# i = 0
-# for label in Agglom_pre[:100]:
-#     subfigs[label].plot(range(0,100),Array[i])
-#     i+=1
-
-# plt.show()
+    plt.show()
 ##############################################
