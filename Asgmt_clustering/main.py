@@ -30,8 +30,8 @@ PCA_COMPONENTS = 0.9
 N_CLUSTERS = 2
 DBSCAN_EPS = 1
 DBSCAN_MINS = 1
-AGG_LINKAGE = "average"#"ward"
-AGG_AFFINITY = pearson_affinity#"euclidean"
+AGG_LINKAGE = "ward"#"average"
+AGG_AFFINITY = "euclidean"#pearson_affinity
 LOG_TRANSFORM = False
 DATA_FILE = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\hGSE33532.csv'
 SIGNIF_GENES = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\SignificantGenes.csv'
@@ -40,15 +40,16 @@ SIGNIF_GENES = 'E:\\Programming\\Dataset\\GEO\\GSE33532\\SignificantGenes.csv'
 random_state = 500
 
 # clustering dict
-his = {"adeno":1,"squamous":1,"mixed":1,"normal lung":0}
-
+his = {"adeno":1,"squamous":2,"mixed":3,"normal lung":0}
+stage = {"1A":1,"1B":2,"2A":3,"2B":4,"na":0}
 # Load data
 filename = DATA_FILE
 with open(filename,newline='') as csvfile:
     raw_data = list(csv.reader(csvfile))
     #sample_List = raw_data[0][1:-1]      # Sample-codes
     Labels = raw_data[1][1:-1]           # tumor-stage-labels
-    Labels = [his[x] for x in Labels]
+    #Labels = [his[x] for x in Labels]
+    #Labels = [stage[x] for x in Labels]
     # remove the unannotated data
     clean_data = list(filter(lambda line:line[-1]!='',raw_data[2:]))
     clean_data = [x[1:] for x in clean_data]
@@ -77,8 +78,8 @@ if not IS_SAMPLE_CLUSTER:
 if LOG_TRANSFORM:
     from sklearn.preprocessing import FunctionTransformer
     Array = FunctionTransformer(np.log).fit_transform(Array)
-Array = Normalizer().fit_transform(Array)
-#Array = StandardScaler().fit_transform(Array)
+#Array = Normalizer().fit_transform(Array)
+Array = StandardScaler().fit_transform(Array)
 if IS_SAMPLE_CLUSTER:
     Array = Array.T
 
@@ -127,7 +128,7 @@ else:
     for i in range(Array.shape[0]):
         if Gene_list[i] in Signif_genes:
             SIGNIF_Labels[i] = 1
-    print("Signif counts:",SIGNIF_Labels.count(1))
+    print("Signif counts:",SIGNIF_Labels)
     for score_func in score_funcs:
         print(score_func.__name__,'KMeans:',score_func(Kmeans_pre,SIGNIF_Labels))
         print(score_func.__name__,'DBSCAN:',score_func(DBSCAN_pre,SIGNIF_Labels))
@@ -138,6 +139,9 @@ else:
 fig = plt.figure(1)
 
 # KMeans result
+# subfig = fig.add_subplot(2,2,1)
+# subfig.scatter(Array_pca[:,0],Array_pca[:,1],c=Labels)
+# subfig.set_title("True Labels")
 subfig = fig.add_subplot(2,2,1)
 subfig.scatter(Array_pca[:,0],Array_pca[:,1],c=Kmeans_pre)
 subfig.set_title("KMeans: n_comp = %d"% N_CLUSTERS)
@@ -180,7 +184,7 @@ if not IS_SAMPLE_CLUSTER:
     subfigs = [subfig1,subfig2]
 
     i = 0
-    for label in Agglom_pre[:50]:
+    for label in Agglom_pre[:100]:
         subfigs[label].plot(range(30),Array[i][-30:])
         i+=1
 
