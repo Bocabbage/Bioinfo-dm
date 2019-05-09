@@ -128,7 +128,6 @@ else:
     for i in range(Array.shape[0]):
         if Gene_list[i] in Signif_genes:
             SIGNIF_Labels[i] = 1
-    print("Signif counts:",SIGNIF_Labels)
     for score_func in score_funcs:
         print(score_func.__name__,'KMeans:',score_func(Kmeans_pre,SIGNIF_Labels))
         print(score_func.__name__,'DBSCAN:',score_func(DBSCAN_pre,SIGNIF_Labels))
@@ -182,11 +181,26 @@ if not IS_SAMPLE_CLUSTER:
     subfig2=fig.add_subplot(1,2,2)
 
     subfigs = [subfig1,subfig2]
+    cluster1 = []
+    cluster2 = []
+    clusters = [cluster1,cluster2]
+    for i in range(len(Kmeans_pre)):
+        if len(cluster1) >=20 and len(cluster2) >=20:
+            break
+        if Kmeans_pre[i]==0 and len(cluster1) >=20:
+            continue
+        elif Kmeans_pre[i]==1 and len(cluster2) >=20:
+            continue
+        clusters[Kmeans_pre[i]].append(i)
 
     i = 0
-    for label in Agglom_pre[:100]:
-        subfigs[label].plot(range(30),Array[i][-30:])
-        i+=1
+    for cluster in clusters:
+        for x in cluster:
+            subfigs[i].plot(range(50),Array[x][-50:])
+        i += 1
+
+    subfig1.set_title("Normal Genes")
+    subfig2.set_title("Differentially Expressed Genes")
 
     plt.show()
 ##############################################
