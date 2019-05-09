@@ -1,24 +1,24 @@
 # Assignment-1: Do clustering for micro-array data
 
-## 1.Target
+## Target
 
 * Apply different cluster methods for micro-array Data, including clustering the samples/genes.
 * Compare the result of different methods
 
-## 2.Data-Source & Instruments
+## Data-Source & Instruments
 
 ### DataSource
 * Database: [GEO](https://www.ncbi.nlm.nih.gov/geo/)
 * Data: [GSE33532](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE33532)
         (25906 probes, 100 samples)
 
-### Instruments
+### Requirements
 * sklearn(python-package)
 * matplotlib(python-package)
 * Bioconductor(R-packages)
 
 
-## 3.Preprocessing
+## Preprocessing
 
 ### Data Clean
 
@@ -40,7 +40,7 @@ I use python to do this.
 * Principal Component Analysis(PCA).[para: n_components=0.9]
 
 
-## 4.Algorithms
+## Algorithms
 
 * [x] K-Means
 * [x] DBSCAN
@@ -50,6 +50,36 @@ I use python to do this.
 Meet problem that 'SpectralClustering' take about 99% of my RAM(12GB), also spending a long time to run but 
 meets 'out of memory'. I just take 100 samples of the data and run them.
 
-## 5.Results
+## Results
 
+### 1.Clustering for samples: Dividing Normal/Tumor samples 
 
+![image](figs/NormalvsCancer.png)
+
+|   Cluster   |  K-Means  |  DBSCAN  |  Agglom  |  GMM  |
+| ----------- |:---------:|:--------:|:--------:|:-----:|
+|     ARI     |    1.0    |    0     |   1.0    | 0.554 |   
+
+### 2.Clustering for samples: Dividing different tumor stages(Poor)
+
+![image](figs/Stage.png)
+
+|   Cluster   |  K-Means  |  DBSCAN  |  Agglom  |  GMM  |
+| ----------- |:---------:|:--------:|:--------:|:-----:|
+|     ARI     |   0.306   |    0     |   0.276  | 0.306 |
+
+### 3.Clustering for samples: Dividing different histology types
+
+![image](figs/Histology.png)
+
+|   Cluster   |  K-Means  |  DBSCAN  |  Agglom  |  GMM  |
+| ----------- |:---------:|:--------:|:--------:|:-----:|
+|     ARI     |   0.482   |    0     |   0.510  | 0.392 |
+
+### 4.Clustering for genes(poor)
+
+![image](figs/GeneClustering.png)
+
+Patterns of 2 clusters(insignificant):
+
+![image](figs/DiffExpressPatterns.png)
