@@ -8,7 +8,7 @@
 library(clusterProfiler)
 
 # load data
-data <- read.csv("E:/temp/rna_seq analysis/diff/pHSC_vs_Blast_DESeq2.csv")
+data <- read.csv("E:/Programming/Dataset/Blast_vs_pHSC_DESeq2.csv")
 
 # Get genes list of gene-name/ensembl/entrezID
 gene.list <- bitr(data$X,fromType = "SYMBOL",toType = c("ENSEMBL","ENTREZID"),OrgDb="org.Hs.eg.db")
