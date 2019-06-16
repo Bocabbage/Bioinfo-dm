@@ -5,9 +5,13 @@ Down_file = open("./Down_genes.list")
 
 Up_dea_genes = open("./Up_dea_genes.csv","w",newline='')
 Down_dea_genes = open("./Down_dea_genes.csv","w",newline='')
+All_dea_genes = open("./All_dea_genes.csv","w",newline='')
 
 Pf = open("./Promoter.annotated")
 Pf_list = Pf.readlines()
+
+writer_all = csv.writer(All_dea_genes)
+writer_all.writerow(['All-Dea-gene'])
 
 writer = csv.writer(Up_dea_genes)
 writer.writerow(['Up-dea-gene'])
@@ -19,6 +23,7 @@ for upGene in Up_file.readlines():
         #print(annotate_info)
         if gene in annotate_info and gene != '':
             writer.writerow([gene])
+            writer_all.writerow([gene])
             break
 
 writer = csv.writer(Down_dea_genes)
@@ -31,6 +36,7 @@ for downGene in Down_file.readlines():
         #print(annotate_info)
         if gene in annotate_info and gene != '':
             writer.writerow([gene])
+            writer_all.writerow([gene])
             break
 
 

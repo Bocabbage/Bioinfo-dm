@@ -33,5 +33,6 @@
 * Unite the two kinds of data:
 
 ```
-    less diff_genes.list |while read gene; do less -S Promoter.annotated |grep $gene >> differential_gene_differential_accessibility.txt; done
+    less Blast_vs_pHSC_DESeq2.csv | awk -F ',' '{if($3>0){print $1}}' > Up_genes.list
+    less Blast_vs_pHSC_DESeq2.csv | awk -F ',' '{if($3<=0){print $1}}' >Down_genes.list
 ```
