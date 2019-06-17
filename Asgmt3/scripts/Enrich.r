@@ -2,7 +2,7 @@
 #title      : GO.r
 #description: GO annotation
 #author     : Zhuofan Zhang
-#date       : 2019/6/15
+#date       : 2019/6/16
 
 # load packages
 library(clusterProfiler)
